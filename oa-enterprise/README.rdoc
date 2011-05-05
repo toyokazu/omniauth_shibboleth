@@ -66,7 +66,37 @@ are not familiar with these authentication methods, please just avoid them.
 
 Direct users to '/auth/ldap' to have them authenticated via your
 company's LDAP server.
-    
+
+== Shibboleth
+
+Use Shibboleth strategy as a middleware in your application:
+
+    require 'omniauth/enterprise'
+    use OmniAuth::Strategies::Shibboleth,
+      :uid_attr => 'eppn',
+      :extra_attrs => [
+        'unscoped-affiliation',
+        'entitlement'
+      ]
+
+Then simply direct users to '/auth/shibboleth' to have them sign in via your company's Shibboleth SP and IdP. '/auth/shibboleth' url simply redirect users to '/auth/shibboleth/callback', so thus you must protect '/auth/shibboleth/callback' by Shibboleth SP.
+
+Example shibd.conf:
+    <Location /application_name/auth/shibboleth/callback>
+      AuthType shibboleth
+      ShibRequestSetting requireSession 1
+      require valid-user
+    </Location>
+
+Shibboleth strategy just checks the existence of Shib-Session-ID. However it requires to provide an 'uid attribute' for mapping between Shibboleth User and Application Local User. The attribute name of the 'uid attribute' can be specified by :uid_attribute option. The other Shibboleth attributes can be obtained via omniauth environment variable hash, e.g. env["omniauth.auth"]["extra"]. The extracted attributes can be specified by :extra_attributes option.
+
+Shibboleth strategy assumes the attributes are provided via environment variables because the use of ShibUseHeaders option may cause some problems. The details are discussed in the following page:
+
+https://spaces.internet2.edu/display/SHIB2/NativeSPSpoofChecking
+
+To provide Shibboleth attributes via environment variables, we can not use proxy_balancer base approach. Currently we can realize it by using Phusion Passenger as an application container. An example construction pattern is shown in presence_checker application (https://github.com/toyokazu/presence_checker/).
+
+
 == Multiple Strategies
 
 If you're using multiple strategies together, use OmniAuth's Builder. That's
